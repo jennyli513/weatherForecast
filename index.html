@@ -1,0 +1,770 @@
+<!DOCTYPE html> 
+<html>
+<head>
+<meta charset="utf-8">
+<title>Weather Forecast</title>
+    
+<link rel="stylesheet" type="text/css" href="css/jquery.mobile-1.4.5.min.css">
+<script src="jQuery/jquery-1.11.2.min.js"></script>
+<script src="jQuery/jquery.mobile-1.4.5.min.js"></script>
+<style>
+    #searchFormP3{
+    
+        vertical-align:middle;
+    }
+
+    #cityP3{
+        font-size: larger;
+        font-weight: bold;
+    }
+
+    #sunriseP2, #sunsetP2, #sunriseP3, #sunsetP3{
+        color:blue;
+        
+    }
+    #resultsP2, #resultsP3{
+        text-align:center;
+        margin: 0;
+    }
+   
+    #loadingP3, #loadingP2, #resultsP2,#resultsP3, #allResultsP2, #allResultsP3, #errorMsgP2, #errorMsgP3
+    {
+        display:none;
+        
+    }
+
+    @media(orientation:landscape){
+		p{
+			width:60%;
+			margin: auto;
+		}
+	}
+
+</style>
+
+<script>
+
+$(document).ready(function(){
+    applyPreferences();
+});
+
+//-------------------code for page2 XML-------------------
+function getTheWeatherXML()
+{
+    loading(true);
+    let cityP2 = document.getElementById("txtQueryP2").value;
+    let url ="", ending = "";
+    //check user input 
+    if(!isValidCity(cityP2)) //if invalid input, display error msg
+    {
+        document.getElementById("errorMsgP2").innerHTML = "Error! Please enter valid city name!"
+        $("#errorMsgP2").css('display','block');
+        $("#resultsP2").css('display','none');
+        $("#allResultsP2").css('display','none');
+
+    }
+    else //valid input
+    {
+        document.getElementById("errorMsgP2").innerHTML = "";
+
+        if($("#radTempCP2").is(":checked"))
+        {
+            url = "http://api.openweathermap.org/data/2.5/forecast?mode=xml&units=metric&q=" + cityP2
+            + ",au&appid=34920584e7ce081e1a002ecb760a383a";
+            ending = "&deg;C";
+            console.log("C");
+
+        }
+        else if ($("#radTempFP2").is(":checked"))
+        {
+            url = "http://api.openweathermap.org/data/2.5/forecast?mode=xml&units=imperial&q=" + cityP2
+            + ",au&appid=34920584e7ce081e1a002ecb760a383a";
+            ending = "&deg;F";
+            console.log("F");
+        }
+        else
+        {
+            url = "http://api.openweathermap.org/data/2.5/forecast?mode=xml&q=" + cityP2
+            + ",au&appid=34920584e7ce081e1a002ecb760a383a";
+            ending = "&deg;K";
+            console.log("K");
+        }
+
+        console.log(url);
+
+        $.ajax({
+            type:"Get",
+            url:url,
+            dataType:"text", //would be logical to have as xml
+            success:function(data)
+            {
+                console.log("1: " + data);
+                //parse xml data
+                var xmlData = $.parseXML(data);
+                //convert the xmlData to a js object
+                var xml = $(xmlData);
+                console.log("2: " + xml);
+                console.log(xml.find("time").length);
+
+                //city name, sunrise time and sunset time 
+                document.getElementById("cityP2").innerHTML = xml.find("name").text();
+                document.getElementById("sunriseP2").innerHTML ="Sunrise:" 
+                        + getTheTimeXML(xml.find("sun").attr("rise"), xml.find("timezone").text());
+                document.getElementById("sunsetP2").innerHTML ="Sunset:" 
+                        + getTheTimeXML(xml.find("sun").attr("set"), xml.find("timezone").text());
+                
+                //every 8th piece of 5 days
+                var str = "";
+                xml.find("time").each(function(index){
+                    if(index % 8 === 7)
+                    {
+                        console.log(index);
+                        str += "<container style='float:left;padding:1px;width:19%;border-left-style:dotted;border-color:gray;'>";
+                    //  str += "<p style='text-align:center'>";
+                        //day
+                        str += "<strong>" + getTheDayXML($(this).attr("to"), xml.find("timezone").text())+ "</strong><br />";
+                        //time
+                        str += getTheTimeXML($(this).attr("to"), xml.find("timezone").text())+ "<br />";
+                        //date
+                        str += getTheDateXML($(this).attr("to"), xml.find("timezone").text()) + "<br />";
+                        //icon
+                        str += "<img src='" + "http://openweathermap.org/img/w/"
+                        + $(this).find("symbol").attr("var") + ".png' />" + "<br />"
+                        //temperature
+                        str += "<strong>Temperature: </strong>" + $(this).find("temperature").attr("value") + ending + "<br />";
+                        //feels like
+                        str += "<strong>Feels like: </strong>" + $(this).find("feels_like").attr("value") + ending + "<br />";
+                        //conditions
+                        str += "<strong>Conditions: </strong>" + $(this).find("clouds").attr("value") + "<br />";
+                        //wind speed
+                        str += "<strong>Wind speed: </strong>" + $(this).find("windSpeed ").attr("mps") + "ms<br />";
+                        //check for wind direction
+                        if($(this).find("windDirection").attr("name") != null)
+                            str += "<strong>Wind direction: </strong>" + $(this).find("windDirection").attr("name") + "<br />";
+                        else
+                            str += "";
+                        //min temperature
+                        str += "<strong>Min: </strong>" + $(this).find("temperature").attr("min") + ending + "<br />"; 
+                        //max temperature
+                        str += "<strong>Max: </strong>" + $(this).find("temperature").attr("max") + ending + "<br />"; 
+                        //humidity
+                        str += "<strong>Humidity: </strong>" + $(this).find("humidity").attr("value") + "%<br />"; 
+                        //cloud coverage
+                        str += "<strong>Cloud coverage: </strong>" + $(this).find("clouds").attr("all") + "%<br />"; 
+                        //check for rain in past 3h
+                        if($(this).find("precipitation").attr("probability") != null)
+                            str += "<strong>Rain precipitation(3h): </strong>" + $(this).find("precipitation").attr("probability") + "mm<br />";
+                        else
+                            str += "";
+
+                        str += "</container>";
+
+                    }
+                    else
+                        str += "";
+
+                }); 
+                
+                document.getElementById("allResultsP2").innerHTML = str;
+                $("#resultsP2").css('display','block');
+                $("#allResultsP2").css('display','block');
+                loading(false);
+            },
+            error:function() ////can't find the input city in the API call. invalid Australian city name
+            {
+                console.log("Error with the call");
+                document.getElementById("errorMsgP2").innerHTML = "Error with the call. Not valid Australia city!";
+                $("#errorMsgP2").css('display','block');
+                $("#resultsP2").css('display','none');
+                $("#allResultsP2").css('display','none');
+
+            }
+
+            });
+    }
+        
+}
+
+//function to get the time
+function getTheTimeXML(aTime, timezone)
+{
+    console.log({aTime});
+    console.log({timezone}); 
+
+    let theDate = new Date(aTime);
+    theDate.setTime(theDate.getTime() + timezone*1000);
+
+    console.log({theDate});
+
+    let str = "";
+    str += theDate.getHours();
+   
+    if (theDate.getMinutes() < 10)
+       str += ":0" + theDate.getMinutes();
+    else
+       str += ":" + theDate.getMinutes();
+    
+    return str;
+}
+
+//function to get the day
+function getTheDayXML(aTime, timezone)
+{
+   // console.log("The day:" + aTime);
+    let theDate = new Date(aTime);
+    theDate.setTime(theDate.getTime() + timezone*1000);
+   // console.log("The date:" + theDate);
+
+    let weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    let day = "";
+    day = weekday[theDate.getDay()];
+    console.log("The day:" + day);
+    return day;
+}
+
+//function to get the date
+function getTheDateXML(aTime, timezone)
+{
+    let theDate = new Date(aTime);
+    theDate.setTime(theDate.getTime() + timezone*1000);
+
+    let str="";
+    str += theDate.getDate() + "/";
+    str += (theDate.getMonth() + 1) + "/";
+    str += theDate.getFullYear();
+    console.log(str);
+
+    return str;
+}
+
+
+
+//--------------------code for page3 JSON----------------------
+
+function getTheWeather()
+{
+    loading(true);
+
+    let cityP3 = document.getElementById("txtQueryP3").value;
+
+    let request =new XMLHttpRequest();
+    let url ="", ending = "";
+    if(!isValidCity(cityP3)) //if invalid input, display error msg
+    {
+        document.getElementById("errorMsgP3").innerHTML = "Error! Please enter valid city name!"
+        $("#errorMsgP3").css('display','block');
+        $("#resultsP3").css('display','none');
+        $("#allResultsP3").css('display','none');
+
+    }
+    else
+    { 
+        document.getElementById("errorMsgP3").innerHTML = "";
+        //url = "http://api.openweathermap.org/data/2.5/forecast?q=" + cityP3 + ",au&appid=34920584e7ce081e1a002ecb760a383a";
+        if($("#radTempCP3").is(":checked"))
+        {
+            url = "http://api.openweathermap.org/data/2.5/forecast?units=metric&q=" + cityP3
+            + ",au&appid=34920584e7ce081e1a002ecb760a383a";
+            ending = "&deg;C";
+            console.log("C");
+
+        }
+        else if ($("#radTempFP3").is(":checked"))
+        {
+            url = "http://api.openweathermap.org/data/2.5/forecast?units=imperial&q=" + cityP3
+            + ",au&appid=34920584e7ce081e1a002ecb760a383a";
+            ending = "&deg;F";
+            console.log("F");
+        }
+        else
+        {
+            url = "http://api.openweathermap.org/data/2.5/forecast?q=" + cityP3
+                + ",au&appid=34920584e7ce081e1a002ecb760a383a";
+            ending = "&deg;K";
+            console.log("K");
+        }
+
+
+        console.log(url);
+        request.onreadystatechange = function()
+        {
+            if(request.readyState == 4 && request.status == 200)
+            {
+                //everything went well
+                //need to convert the string into an object
+                console.log("About to parse");
+                let data = JSON.parse(request.responseText);
+                console.log(data);
+                console.log(data.list.length);
+
+                //extract the data
+                if(data.cod == 200)
+                {
+                    //display city name, sunrise time and sunset time
+                    document.getElementById("cityP3").innerHTML = data.city.name;
+                    console.log("timezone:" + data.city.timezone);
+                    document.getElementById("sunriseP3").innerHTML ="Sunrise:" + getTheLocalTime(data.city.sunrise, data.city.timezone);
+                    document.getElementById("sunsetP3").innerHTML ="Sunset:" + getTheLocalTime(data.city.sunset, data.city.timezone);
+                    
+                //extract the 8th piece of information for each data set
+                let str = "";
+                for (let i = 7; i < data.list.length; i+=8)
+                {
+                    str += "<div style='float:left;border-left-style:dotted;width:19.7%;border-color:lightgray;'>";
+                        //day
+                    str +="<strong>" + getTheDay( data.list[i].dt) + "</strong><br />";
+                    //time 
+                   str += getTheLocalTime(data.list[i].dt, data.city.timezone) + "<br />";
+                    //date
+                    str += getTheDate(data.list[i].dt) + "<br />";
+                    //icon
+                    str += "<img src='" + "http://openweathermap.org/img/w/"
+                        + data.list[i].weather[0].icon + ".png' />" + "<br />"
+                    //temperature
+                    str += "<strong>Temperature: </strong>" + data.list[i].main.temp + ending + "<br />";
+                    //feels like
+                    str += "<strong>Feels like: </strong>" + data.list[i].main.feels_like + ending + "<br />";
+                    //conditions
+                    str += "<strong>Conditions:</strong>" + data.list[i].weather[0].description + "<br />";
+                    //wind speed
+                    str += "<strong>Wind speed:</strong>" + data.list[i].wind.speed + "m/s" + "<br />";
+                    //check for wind direction:
+                    if(data.list[i].wind.direction != null)
+                        str += "<strong>Wind direction:</strong>" + data.list[i].wind.direction + "<br />";
+                        else
+                        str += "";
+                    //min temperature
+                    str += "<strong>Min:</strong>" + data.list[i].main.temp_min + ending + "<br />";
+                    //max temperature
+                    str += "<strong>Max:</strong>" + data.list[i].main.temp_max + ending + "<br />";
+                    //humidty
+                    str += "<strong>Humidity:</strong>" + data.list[i].main.humidity + "%" + "<br />";
+                    //cloud coverage
+                    str += "<strong>Cloud coverage:</strong>" + data.list[i].clouds.all + "%" + "<br />"
+                    //check for rain 
+                    if(data.list[i].rain != null)
+                        str += "<strong>Rain precipitation(3h):</strong>" + data.list[i].rain["3h"] + "mm<br />";
+                        else
+                        str += "";
+
+                    str += "</div>"
+                }
+
+                document.getElementById("allResultsP3").innerHTML = str;
+
+                    $("#resultsP3").css('display','block');
+                    $("#allResultsP3").css('display','block');
+                    loading(false);
+
+                }
+            }
+            else //error with the request object
+            {
+                console.log("Error with request");
+            }
+
+        }; //end of onreadystatechange()
+
+        request.open("GET", url, true);
+        request.send();
+    }
+
+}
+
+
+//function to get the day of the week
+function getTheDay(aTime)
+{
+    let weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    let day = "";
+    aTime = parseInt(aTime)* 1000;
+    let d = new Date(aTime);
+    day = weekday[d.getDay()];
+
+    return day;
+}
+//function to get the date/month/year
+function getTheDate(aTime)
+{
+    aTime = parseInt(aTime)* 1000;
+    let theDate = new Date(aTime);
+    //console.log(theDate);
+    let str = "";
+    str += theDate.getDate() + "/";
+    str += (theDate.getMonth() + 1) + "/";
+    str += theDate.getFullYear();
+    
+    return str;
+
+}
+
+/* NOT USING THIS FUNCTION
+//function to get the time
+function getTheTime(aTime)
+{
+    //need to convert the time to milliseconds-date in JS is in milliseconds
+    //time here is in Unix time = seconds
+    
+    aTime = parseInt(aTime)* 1000;
+    let theDate = new Date(aTime);
+    console.log("Time:" + theDate);
+
+    let str = "";
+    str += theDate.getHours();
+    
+    if (theDate.getMinutes() < 10)
+       str += ":0" + theDate.getMinutes();
+    else
+       str += ":" + theDate.getMinutes();
+    
+    return str;
+}
+*/
+
+//function to get the local time
+//The time we read from the JSON file is GMT+10 (Australian Easter Standard Time--like Melbourne and Sydney)
+//But in Perth, the sunrise time is around 7am local time. (It should be GMT+8 Australian Western Standard Time)
+//I tried to use the difference between this two timezone to calculate the local time
+//In Adelaide, it's more complex (GMT+9.5), it is half hour difference
+//I tried to write the code to calculate the local time. Hope it works.
+function getTheLocalTime(aTime, timezone)
+{
+    //the difference between the timezones
+    //Australian Easter Standard Time: 36000
+    let diff = (timezone - 36000) / 3600;
+    console.log("diff:" + diff);
+
+    aTime = parseInt(aTime)* 1000;
+    let theDate = new Date(aTime);
+    console.log("Time:" + theDate);
+
+    let str = "";
+    //if the timezone is half an hour difference
+    if(Math.abs(diff) == 0.5)
+    {
+        let hour = 0; let min = 0;
+        diff = diff *60;
+       // console.log("diff:" + diff);
+       // console.log(theDate.getHours(),theDate.getMinutes());
+        if((theDate.getMinutes() + diff) < 0)
+          {
+              hour = theDate.getHours()-1;
+              min = 60 + (theDate.getMinutes() + diff);
+                  
+          }
+        else if ((theDate.getMinutes() + diff) > 60)
+        {
+            hour = theDate.getHours()+1;
+            min = (theDate.getMinutes() + diff) -60;
+        }
+             
+        else
+        {
+            hour = theDate.getHours();
+            min = theDate.getMinutes() + diff;
+        }
+             
+        
+        str = hour + ":" + min;
+    }
+
+    else
+    {
+        str += theDate.getHours() + diff;
+    
+        if (theDate.getMinutes() < 10)
+           str += ":0" + theDate.getMinutes();
+        else
+           str += ":" + theDate.getMinutes();
+
+    }
+   
+    return str;
+}
+
+
+function loading(enabled)
+{
+    if(enabled) //if true
+    {
+        $("#loadingP2").css('display','none');
+        $("#loadingP3").css('display','none');
+        $("#resultsP3").css('display','none');
+        $("allResultsP3").css('display','none');
+    }
+    else
+    {
+        $("#loadingP2").css('display','none');
+        $("#loadingP3").css('display','none');
+    }
+   
+}
+
+//function to valid the input city name
+function isValidCity(city)
+{
+    let pattern = new RegExp(/^([a-zA-Z]+|[a-zA-Z]+\s[a-zA-Z]+)$/);
+    return city.match(pattern);
+}
+
+
+//-----------------------code for page4 User Preferences--------------
+function savePrefs()
+{
+    let bgColor = document.getElementById("txtBGColor").value;
+    let fontColor = document.getElementById("txtFontColor").value;
+    let fontSize = document.getElementById("txtFontSize").value;
+    console.log(bgColor + " " + fontColor + " " + fontSize);
+    try
+    {
+        let myPrefs = {"bgColor":bgColor, "fontColor":fontColor, "fontSize":fontSize};
+        localStorage.setItem("myAppPrefs", JSON.stringify(myPrefs));
+
+    }
+    catch(e)
+    {
+        if(e == QUOTA_EXCEEDED_ERR)
+            console.log("You are out of local storage");
+        else
+            console.log("Unknown error");
+
+    }
+    applyPreferences();
+
+}
+
+function applyPreferences()
+{
+    let bgColor ="#FFFFFF";
+    let fontColor ="#000000";
+    let fontSize = "12";
+
+    if(localStorage.getItem("myAppPrefs"))
+    {
+        let prefer = localStorage.getItem("myAppPrefs")
+       // console.log("prefer retrieve:" + prefer);
+        let myPrefs = JSON.parse(prefer);
+        console.log(myPrefs);
+
+        bgColor = myPrefs.bgColor;
+        fontColor = myPrefs.fontColor;
+        fontSize = myPrefs.fontSize;
+
+    }
+
+    $(".ui-mobile [data-role='page']").css({"background-color": bgColor, "color":fontColor, "font-size":fontSize + "px"});
+
+    let backColor2 = document.querySelector("#txtBGColor");
+    backColor2.value = bgColor;
+    backColor2.select();
+    let fontColor2 = document.querySelector("#txtFontColor");
+    fontColor2.value = fontColor;
+    fontColor2.select();
+    let fontSize2 = document.querySelector("#txtFontSize");
+    fontSize2.value = fontSize;
+
+}
+
+function resetPrefs()
+{
+    if ('localStorage in window' && window.localStorage !== null)
+    {
+
+        try
+        {
+            let myPrefs = {"bgColor":"#FFFFFF", "fontColor":"#000000", "fontSize":"12"};
+            localStorage.setItem("myAppPrefs", JSON.stringify(myPrefs));
+           
+        }
+        catch(e)
+        {
+            if(e == QUOTA_EXCEEDED_ERR)
+                console.log("You are out of local storage");
+            else
+                console.log("unknown error");
+        }
+    }
+    else
+    {
+        //this person is incognito
+        console.log("This browser does NOT support local storage!");
+    }
+
+    applyPreferences();
+}
+
+
+</script>
+</head>
+ 
+<body> 
+
+<div data-role="page" id="page" data-theme="a">
+    <div data-role="header">
+        <h1>Weather Forecast</h1>
+    </div>
+    <!--<div data-role="content">-->
+    <div data-role="main" class="ui-content">	
+        <ul data-role="listview">
+            <li><a href="#page2">Weather Forecast (XML)</a></li>
+            <li><a href="#page3">Weather Forecast (JSON)</a></li>
+            <li><a href="#page4">User Preferences</a></li>
+        </ul>		
+   </div>
+   <div data-role="footer">
+        <h4>Yanjie Li</h4>
+   </div>
+</div>
+    
+<div data-role="page" id="page2">
+    <div data-role="header" data-add-back-btn="true">
+        <h1>Weather Forecast (XML)</h1>
+    </div>
+    <!--<div data-role="content">-->
+    <div data-role="main" class="ui-content">	
+        <div data-role="fieldcontain" id="searchFormP2" >
+            <div data-role="fieldcontain">
+                <label for="txtQueryP2">Enter An Australian City:</label>
+                <input type="search" name="txtQueryP2" value="Melbourne" id="txtQueryP2" />
+            </div>
+            <div data-role="fieldcontain">
+                <fieldset data-role="controlgroup" data-type="horizontal" >
+                   <legend>Temperature:</legend></td>
+                    <input type="radio" name="radTempP2" id="radTempCP2" checked="checked" />
+                    <label for="radTempCP2">&deg;C</label>
+                    
+                    <input type="radio" name="radTempP2" id="radTempFP2"  />
+                    <label for="radTempFP2">&deg;F</label>
+                    
+                    <input type="radio" name="radTempP2" id="radTempKP2" />
+                    <label for="radTempKP2">&deg;K</label>
+                 </fieldset>
+             </div>
+             
+             <div style="text-align: center;">  
+                <button data-inline="true" id="weatherBtnP2" onclick="getTheWeatherXML();">Get Forecast</button>
+            </div>
+
+        </div>
+
+        <section id="loadingP2">
+            <img alt="loading" src="images/ajax-loader.gif" />
+        </section>
+
+        <section>
+            <p  style="text-align: center;color: red;" id="errorMsgP2"></p>
+        </section>
+
+        <section id="resultsP2">
+            <p id="cityP2"></p>
+            <p id="sunriseP2"></p>
+            <p id="sunsetP2"></p>
+
+            
+        </section>
+
+        <section id="allResultsP2">
+           <!-- <p id="theResultsP2"></p>   -->
+        </section>
+
+
+
+    </div>
+    <div data-role="footer"> 
+        <h4>Yanjie Li</h4>    
+    </div>
+</div>
+    
+<div data-role="page" id="page3">
+    <div data-role="header" data-add-back-btn="true">
+         <h1>Weather Forecast (JSON)</h1>
+    </div>
+    <!--<div data-role="content">-->
+    <div data-role="main" class="ui-content">	
+          <div data-role="fieldcontain" id="searchFormP3" >
+            <div data-role="fieldcontain">
+                <label for="txtQueryP3">Enter An Australian City:</label>
+                <input type="search" name="txtQueryP3" value="Melbourne" id="txtQueryP3" />
+            </div>
+            <div data-role="fieldcontain">
+                <fieldset data-role="controlgroup" data-type="horizontal" >
+                   <legend>Temperature:</legend></td>
+                    <input type="radio" name="radTemp" id="radTempCP3" checked="checked" />
+                    <label for="radTempCP3">&deg;C</label>
+                    
+                    <input type="radio" name="radTemp" id="radTempFP3"  />
+                    <label for="radTempFP3">&deg;F</label>
+                    
+                    <input type="radio" name="radTemp" id="radTempKP3" />
+                    <label for="radTempKP3">&deg;K</label>
+                 </fieldset>
+             </div>
+             
+             <div style="text-align: center;">  
+                <button data-inline="true" id="weatherBtnP3" onclick="getTheWeather();">Get Forecast</button>
+            </div>
+
+        </div>
+
+        <section id="loadingP3">
+            <img alt="loading" src="images/ajax-loader.gif" />
+        </section>
+
+        <section>
+            <p  style="text-align: center;color: red;" id="errorMsgP3"></p> 
+        </section>
+
+        <section id="resultsP3">
+            <p id="cityP3"></p>
+            <p id="sunriseP3"></p>
+            <p id="sunsetP3"></p>
+
+            
+        </section>
+
+        <div class="container"  id="allResultsP3">
+           
+        </div>
+
+    </div>
+    <div data-role="footer">
+        <h4>Yanjie Li</h4>
+  	</div>
+</div>
+    
+<div data-role="page" id="page4">
+    <div data-role="header" data-add-back-btn="true">
+          <h1>User Preferences</h1>
+    </div>
+    <!--<div data-role="content">-->
+    <div data-role="main" class="ui-content">	
+
+        <div data-role="fieldcontain">
+			<label for="txtBGColor">Background Color:</label>
+			<input type="color" name="txtBGColor" id="txtBGColor" />
+        </div>
+
+        <div data-role="fieldcontain">
+			<label for="txtFontColor">Font Color:</label>
+			<input type="color" name="txtFontColor" id="txtFontColor" />
+        </div>
+
+        <div data-role="fieldcontain">
+            <label for="txtFontSize">Font Size:</label>
+            <input type="number" name="txtFontSize" id="txtFontSize" value="12" min="8" max="20" />
+        </div>
+
+        <div style="text-align: center;">
+        <button data-inline="true" onClick="savePrefs();">Save Preferences</button>
+        <button data-inline="true" onClick="resetPrefs();">Reset Preferences</button>
+        </div>
+
+	
+    </div>
+    <div data-role="footer">
+        <h4>Yanjie Li</h4>
+  	</div>
+</div>
+
+</body>
+</html>
